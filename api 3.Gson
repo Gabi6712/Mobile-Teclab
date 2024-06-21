@@ -1,0 +1,51 @@
+import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.IOException
+
+// Modelo de Producto
+data class Product(
+    val id: Int,
+    val name: String,
+    val description: String,
+    val price: Double,
+    val currency: String,
+    @SerializedName("in_stock") val inStock: Boolean
+)
+
+// Función para obtener productos desde la API
+fun fetchProducts(): List<Product>? {
+    val url = "https://jsonkeeper.com/b/MX0A"
+    val client = OkHttpClient()
+    val request = Request.Builder().url(url).build()
+
+    client.newCall(request).execute().use { response ->
+        if (!response.isSuccessful) throw IOException("Unexpected code $response")
+
+        val responseData = response.body?.string()
+        return if (responseData != null) {
+            val productList = Gson().fromJson(responseData, ProductList::class.java)
+            productList.products
+        } else {
+            null
+        }
+    }
+}
+
+// Modelo de respuesta de la API
+data class ProductList(
+    val products: List<Product>
+)
+
+// Llamada a la función y muestra de resultados
+fun main() {
+    val products = fetchProducts()
+    if (products != null) {
+        for (product in products) {
+            println("Nombre: ${product.name}, Precio: ${product.price} ${product.currency}")
+        }
+    } else {
+        println("No se pudieron obtener los productos")
+    }
+}
