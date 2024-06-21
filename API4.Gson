@@ -1,0 +1,64 @@
+import org.junit.Assert.*
+import org.junit.Test
+
+data class Product(
+    val id: Int,
+    val name: String,
+    val description: String,
+    val price: Double,
+    val currency: String,
+    val inStock: Boolean
+)
+
+class ProductViewModel {
+    var products: List<Product> = listOf()
+
+    fun fetchProducts(callback: () -> Unit) {
+        // Simulación de llamada a API
+        val url = URL("https://jsonkeeper.com/b/MX0A")
+        Thread {
+            val connection = url.openConnection() as HttpURLConnection
+            connection.inputStream.bufferedReader().use {
+                val response = it.readText()
+                val productList = Gson().fromJson(response, ProductList::class.java)
+                products = productList.products
+                callback()
+            }
+        }.start()
+    }
+
+    fun numberOfProducts(): Int {
+        return products.size
+    }
+}
+
+class ProductViewModelTests {
+
+    @Test
+    fun testProductsAreDisplayed() {
+        val viewModel = ProductViewModel()
+        val lock = Object()
+
+        viewModel.fetchProducts {
+            synchronized(lock) {
+                lock.notify()
+            }
+        }
+
+        synchronized(lock) {
+            lock.wait(5000)
+        }
+
+        assertTrue("Productos deberían ser mostrados en pantalla", viewModel.numberOfProducts() > 0)
+    }
+
+    @Test
+    fun testNoProductsAreDisplayed() {
+        val viewModel = ProductViewModel()
+        viewModel.products = listOf()
+
+        assertEquals("No debería mostrarse información en pantalla cuando el listado está vacío", 0, viewModel.numberOfProducts())
+    }
+}
+
+data class ProductList(val products: List<Product>)
